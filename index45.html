@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resume Probe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: single column; inputs (with file drop) on top, two actions, results as stacked cards; tabs switch Follow-ups / Submittal */
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --line:#dde3ee; --fg:#141a2a; --muted:#5b6478;
+  --accent:#2248c9; --accent-soft:#e3e9fb; --on-accent:#ffffff;
+  --good:#127a4b; --good-soft:#dcf2e6; --warn:#a15c00; --warn-soft:#fbecd5; --bad:#b4232c; --bad-soft:#fbe1e2;
+  --sans:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1320; --surface:#181e2e; --line:#2a3247; --fg:#e8ecf5; --muted:#99a2b8;
+  --accent:#7d9cff; --accent-soft:#1f2a4d; --on-accent:#0b1020;
+  --good:#5fd39a; --good-soft:#123326; --warn:#f0b35c; --warn-soft:#3a2a12; --bad:#ff7d84; --bad-soft:#3d1a1d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1320; --surface:#181e2e; --line:#2a3247; --fg:#e8ecf5; --muted:#99a2b8;
+  --accent:#7d9cff; --accent-soft:#1f2a4d; --on-accent:#0b1020;
+  --good:#5fd39a; --good-soft:#123326; --warn:#f0b35c; --warn-soft:#3a2a12; --bad:#ff7d84; --bad-soft:#3d1a1d; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-direction:column;gap:4px}
+h1{font-size:22px;font-weight:800;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0;max-width:62ch}
+.block{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.block.drag{border-color:var(--accent);background:var(--accent-soft)}
+.label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{font-size:10px;letter-spacing:.06em;padding:2px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+.opt{font-weight:600;text-transform:none;letter-spacing:0}
+textarea{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;resize:vertical}
+#jd{min-height:110px} #resume{min-height:170px} #prescreen{min-height:110px} #notes{min-height:70px}
+textarea:focus,button:focus-visible,.upl:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.upl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.upl{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--accent);border:1px dashed var(--accent);border-radius:8px;padding:7px 12px;cursor:pointer;background:transparent}
+.upl input{position:absolute;opacity:0;width:1px;height:1px}
+.file-msg{font-size:13px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.file-msg.err{color:var(--bad)} .file-msg.ok{color:var(--good)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-weight:700;padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.55;cursor:default}
+.note{font-size:13px;color:var(--muted)}
+.status{font-size:14px;font-weight:600;color:var(--accent)}
+.status.err{color:var(--bad)}
+.tabs{display:flex;gap:6px}
+.tab{flex:1;font:inherit;font-weight:700;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.pane{display:flex;flex-direction:column;gap:14px}
+.summary{font-size:15px;margin:0}
+.verdict{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+.v-strong{background:var(--good-soft);color:var(--good)} .v-possible{background:var(--warn-soft);color:var(--warn)} .v-weak{background:var(--bad-soft);color:var(--bad)}
+.fit{display:flex;flex-direction:column;gap:8px}
+.fit-row{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding-top:8px;border-top:1px solid var(--line)}
+.fit-row:first-child{border-top:0;padding-top:0}
+.chip{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;white-space:nowrap;grid-row:span 2}
+.c-match{background:var(--good-soft);color:var(--good)} .c-partial{background:var(--warn-soft);color:var(--warn)} .c-missing{background:var(--bad-soft);color:var(--bad)}
+.req{font-weight:700;min-width:0} .ev{font-size:13px;color:var(--muted);min-width:0}
+.fu{display:flex;flex-direction:column;gap:5px;padding-top:12px;border-top:1px solid var(--line)}
+.fu:first-child{border-top:0;padding-top:0}
+.fu-top{display:flex;gap:8px;align-items:baseline}
+.num{font-family:var(--mono);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.claim{font-size:13px;color:var(--muted)}
+.ask{font-weight:700;padding-left:10px;border-left:3px solid var(--accent)}
+.listen{font-size:13px;display:grid;grid-template-columns:auto 1fr;gap:2px 8px}
+.listen .g{color:var(--good);font-weight:700} .listen .w{color:var(--bad);font-weight:700}
+.flag{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:8px;background:var(--bad-soft)}
+.flag b{color:var(--bad)}
+.flags{display:flex;flex-direction:column;gap:8px}
+.empty{color:var(--muted);font-size:14px}
+.sub-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.sub-title{font-size:17px;font-weight:800;margin:0}
+.prose{margin:0;max-width:68ch}
+ul.quals{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.form{display:grid;grid-template-columns:minmax(150px,auto) 1fr;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.form dt,.form dd{margin:0;padding:8px 10px;border-top:1px solid var(--line);font-size:14px;min-width:0;overflow-wrap:anywhere}
+.form dt:nth-of-type(1),.form dd:nth-of-type(1){border-top:0}
+.form dt{font-weight:700;background:var(--bg)}
+.missing{color:var(--bad);font-weight:700}
+@media (max-width:480px){.form{grid-template-columns:1fr}.form dd{border-top:0;padding-top:0}.form dt:nth-of-type(1)~dt{border-top:1px solid var(--line)}}
+.qc{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.qc-row{display:flex;gap:8px;align-items:baseline}
+.qc-ok{color:var(--good);font-weight:800} .qc-bad{color:var(--bad);font-weight:800}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+html,body{margin:0}
+.head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.btn.small{padding:7px 12px;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;border:0;background:transparent;color:var(--fg);padding:8px 12px;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);padding:20px;width:min(520px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 14px;font-size:17px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field input[type=password],.field input[type=text]{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+.row{display:flex;gap:8px;align-items:center}
+.hint{font-size:12.5px;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+footer{font-size:12.5px;color:var(--muted);text-align:center;padding:0 16px 24px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="head-row">
+      <h1>Resume Probe</h1>
+      <button class="btn ghost small" id="openSettings">⚙ AI settings</button>
+    </div>
+    <p class="sub">Upload or paste the job and the resume. Get follow-up questions for the call, then a client-ready submittal in your Brief and Standard formats.</p>
+  </header>
+
+  <div class="block" data-drop="jd">
+    <span class="label">Job description <span class="tag ex">Example</span></span>
+    <textarea id="jd" placeholder="Paste the job description, or upload / drop a file"></textarea>
+    <div class="upl-row">
+      <label class="upl">Upload file<input type="file" id="jdFile" accept=".pdf,.docx,.txt,.md,.rtf"></label>
+      <span class="file-msg" id="jdMsg">PDF, Word (.docx) or text. You can also drop a file here.</span>
+    </div>
+  </div>
+
+  <div class="block" data-drop="resume">
+    <span class="label">Candidate resume <span class="tag ex">Example</span></span>
+    <textarea id="resume" placeholder="Paste the resume or LinkedIn text, or upload / drop a file"></textarea>
+    <div class="upl-row">
+      <label class="upl">Upload file<input type="file" id="resumeFile" accept=".pdf,.docx,.txt,.md,.rtf"></label>
+      <span class="file-msg" id="resumeMsg">PDF, Word (.docx) or text. You can also drop a file here.</span>
+    </div>
+    <span class="note">Email and phone are kept on this page and filled into the form. They are removed before anything is sent to Claude.</span>
+  </div>
+
+  <div class="block">
+    <span class="label">Prescreen notes <span class="opt">Needed for the submittal</span> <span class="tag ex">Example</span></span>
+    <textarea id="prescreen" placeholder="From your intake call: compensation, location, interview and start availability, employment status, motivation for change, communication"></textarea>
+  </div>
+
+  <div class="block">
+    <span class="label">Recruiter notes <span class="opt">Optional</span></span>
+    <textarea id="notes" placeholder="Highlights, red flags, or context you want reflected"></textarea>
+  </div>
+
+  <div class="btns">
+    <button class="btn" id="goFU">Get follow-ups</button>
+    <button class="btn" id="goSub">Write submittal</button>
+    <button class="btn ghost" id="stop" hidden>Stop</button>
+    <button class="btn ghost" id="clear">Clear</button>
+  </div>
+  <span class="status" id="status" role="status"></span>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabFU" aria-selected="true">Follow-ups</button>
+    <button class="tab" role="tab" id="tabSub" aria-selected="false">Submittal</button>
+  </div>
+  <div class="pane" id="paneFU"></div>
+  <div class="pane" id="paneSub" hidden></div>
+</div>
+
+<footer>Nothing is stored on a server. Text goes straight from this browser to the AI provider you pick, and your API key stays in this browser only.</footer>
+
+<dialog id="settings">
+  <h2>AI settings</h2>
+  <div class="field">
+    <span class="label">Provider</span>
+    <div class="seg" id="provider"><button data-v="claude" class="on">Claude (Anthropic)</button><button data-v="gemini">Gemini (Google)</button></div>
+  </div>
+  <div class="field">
+    <label class="label" for="apikey">API key</label>
+    <input type="password" id="apikey" autocomplete="off" placeholder="Paste your API key">
+    <div class="hint" id="keyHint"></div>
+  </div>
+  <div class="field">
+    <label class="label" for="model">Model</label>
+    <div class="row"><input type="text" id="model" list="modelList"><button class="btn ghost small" id="loadModels">Load models</button></div>
+    <datalist id="modelList"></datalist>
+    <div class="hint" id="modelHint"></div>
+  </div>
+  <label class="check"><input type="checkbox" id="remember" checked> Remember key on this device</label>
+  <div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn ghost" id="cancelSettings">Cancel</button><button class="btn" id="saveSettings">Save</button></div>
+</dialog>
+
+<script>
+const EX_JD=`Senior DevOps Engineer (contract, hybrid Bentonville AR)
+Must have: AWS (EKS, IAM, VPC), Terraform, Kubernetes in production, CI/CD (GitHub Actions or Jenkins), Python or Bash scripting, monitoring with Datadog or Prometheus.
+Nice to have: on-call / incident response, cost optimization.`;
+const EX_RESUME=`Priya Example — DevOps Engineer
+priya.example@email.com | (555) 010-0199 | linkedin.com/in/priya-example
+M.S. Computer Science, Example State University, Aug 2021 – May 2023
+
+Cloud Engineer, Acme Retail Tech (Jun 2023 – Present)
+- Managed AWS infrastructure for 40+ microservices on EKS
+- Wrote Terraform modules for VPC, EKS and RDS; reduced provisioning time by 60%
+- Built GitHub Actions pipelines with automated testing and deployments
+- Set up Datadog dashboards and alerts; participated in on-call rotation
+
+DevOps Engineer, Globex Solutions (Jan 2020 – Jul 2023)
+- Migrated 100+ applications to AWS
+- Kubernetes, Docker, Jenkins, Ansible, Terraform, Python, Bash, Prometheus, Grafana, Azure, GCP`;
+const EX_PRESCREEN=`Target $70/hr W2. Lives in Rogers, AR; fine with hybrid 3 days. Currently employed at Acme, contract ends Nov. Looking for larger-scale Kubernetes work. Clear, organized communicator, explained Terraform project well.`;
+const EXAMPLE_FU={
+  verdict:"possible",
+  summary:"Strong match on AWS, Terraform, EKS and GitHub Actions in the current role. The earlier job overlaps with full-time grad school and with the current job, and its bullets read like a tool list, so verify the timeline and depth before submitting.",
+  fit:[
+    {requirement:"AWS (EKS, IAM, VPC)",status:"match",evidence:"Managed AWS for 40+ services on EKS; wrote VPC Terraform modules."},
+    {requirement:"Terraform",status:"match",evidence:"Wrote modules for VPC, EKS, RDS with a measured result."},
+    {requirement:"Kubernetes in production",status:"partial",evidence:"EKS listed, but no detail on running clusters (upgrades, scaling)."},
+    {requirement:"CI/CD",status:"match",evidence:"Built GitHub Actions pipelines."},
+    {requirement:"Python or Bash",status:"partial",evidence:"Only listed as keywords, no example of what was scripted."},
+    {requirement:"Datadog / Prometheus",status:"match",evidence:"Set up Datadog dashboards and alerts."}
+  ],
+  followups:[
+    {topic:"Terraform",claim:"Reduced provisioning time by 60%",ask:"What did provisioning look like before, and what specifically did your modules change to get that 60%?",good:"Before/after in minutes or hours, names what was automated, explains remote state.",weak:"Can’t say what the starting point was."},
+    {topic:"Kubernetes",claim:"40+ microservices on EKS",ask:"Did you set up and upgrade the EKS clusters yourself, or deploy into clusters another team ran?",good:"Talks about node groups, upgrades, Helm, autoscaling.",weak:"Only ran kubectl or deployed YAML someone else wrote."},
+    {topic:"On-call",claim:"Participated in on-call rotation",ask:"Tell me about the worst page you got. What alerted you and what did you do first?",good:"Step-by-step story with a root cause and a fix afterward.",weak:"No specific incident comes to mind."},
+    {topic:"Migration",claim:"Migrated 100+ applications to AWS",ask:"What was your personal part of that migration, and how long did it take?",good:"Specific apps, approach (rehost vs rebuild), a problem they solved.",weak:"“The team migrated everything.”"}
+  ],
+  red_flags:[
+    {flag:"Globex role (Jan 2020 – Jul 2023) overlaps the full-time M.S. (2021–2023) and the current job (from Jun 2023).",ask:"Walk me through your timeline. Were you working full-time at Globex while in your master’s program?"},
+    {flag:"Globex bullets are a tool list (including Azure and GCP) with no detail.",ask:"Which of those tools did you use most at Globex, and what did you build with it?"}
+  ]
+};
+const EXAMPLE_SUB={
+  brief:{opening:"Priya brings about 3 years of hands-on AWS and DevOps experience and is currently a Cloud Engineer at Acme Retail Tech. Her background lines up with several core requirements for this role, including roughly 3 years building infrastructure with Terraform, managing 40+ microservices on Amazon EKS, and building CI/CD pipelines in GitHub Actions. She also brings on-call experience supported by Datadog monitoring.",
+    bullets:["~3 years with AWS, including EKS, VPC and RDS","Terraform modules for VPC, EKS and RDS; cut provisioning time by 60%","Managed 40+ microservices on Amazon EKS","Built GitHub Actions pipelines with automated testing and deployment","Datadog dashboards and alerting, plus on-call rotation experience"]},
+  standard:{paragraph:"Priya is a Cloud Engineer at Acme Retail Tech with about 3 years of AWS and DevOps experience. In her current role she manages AWS infrastructure for more than 40 microservices on Amazon EKS, writes Terraform modules for VPC, EKS and RDS, and has reduced provisioning time by 60%. She builds GitHub Actions pipelines with automated testing and deployments and maintains Datadog dashboards and alerts while participating in on-call. Her experience aligns with this role's core requirements in AWS, Terraform, Kubernetes, CI/CD and monitoring.",
+    form:{name:"Priya Example",position:"Senior DevOps Engineer",compensation:"$70/hr W2",location:"Rogers, AR; open to hybrid 3 days/week",interview_availability:null,start_availability:null,communication:"Clear and organized; explained her Terraform project well",employment_status:"Employed at Acme Retail Tech; contract ends in November",motivation:"Looking for larger-scale Kubernetes work"},
+    top_qualifications:["~3 years of AWS experience (EKS, VPC, RDS, IAM) in a retail technology environment","Terraform modules for VPC, EKS and RDS; reduced provisioning time by 60%","Managed 40+ microservices running on Amazon EKS","Built GitHub Actions CI/CD pipelines with automated testing and deployments","Datadog dashboards and alerting for production services","On-call rotation experience supporting production systems","Scripting background in Python and Bash"]}
+};
+
+const $=id=>document.getElementById(id);
+const KEY="resume-probe-v2";
+const INPUTS=["jd","resume","prescreen","notes"];
+let isExample=true;
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&INPUTS.some(k=>s[k])){INPUTS.forEach(k=>$(k).value=s[k]||"");isExample=false;}}catch(e){}
+function setExampleTags(){document.querySelectorAll(".tag.ex").forEach(t=>t.hidden=!isExample);}
+function persist(){try{const o={};INPUTS.forEach(k=>o[k]=$(k).value);localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}}
+function leaveExample(){if(isExample){isExample=false;setExampleTags();}}
+INPUTS.forEach(id=>$(id).addEventListener("input",()=>{leaveExample();persist();}));
+
+const EMAIL_RE=/[\w.+-]+@[\w-]+\.[\w.-]+/g;
+const PHONE_RE=/(\+?\d{1,2}[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
+const LI_RE=/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[\w%-]+\/?/i;
+function scrub(t){return t.replace(EMAIL_RE,"[email]").replace(PHONE_RE,"[phone]");}
+function contacts(){const t=$("resume").value+"\n"+$("prescreen").value+"\n"+$("notes").value;
+  const em=(t.match(EMAIL_RE)||[])[0]||"",ph=(t.match(PHONE_RE)||[])[0]||"",li=(t.match(LI_RE)||[])[0]||"";
+  return {contact:[em,ph.trim()].filter(Boolean).join(" | ")||null,linkedin:li||null};}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ---------- File upload ---------- */
+const libs={};
+function loadScript(src){return libs[src]||(libs[src]=new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=()=>{delete libs[src];rej(new Error("load"));};document.head.appendChild(s);}));}
+const PDFJS="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+async function pdfText(buf){
+  await loadScript(PDFJS+"pdf.worker.min.js");await loadScript(PDFJS+"pdf.min.js");
+  const lib=window.pdfjsLib;lib.GlobalWorkerOptions.workerSrc=PDFJS+"pdf.worker.min.js";
+  const pdf=await lib.getDocument({data:buf,isEvalSupported:false}).promise;const pages=[];
+  for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();
+    pages.push(c.items.map(it=>(it.str||"")+(it.hasEOL?"\n":" ")).join("").replace(/[ \t]+\n/g,"\n"));}
+  return pages.join("\n\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+async function docxText(buf){await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
+  const r=await window.mammoth.extractRawText({arrayBuffer:buf});return r.value.replace(/\n{3,}/g,"\n\n").trim();}
+async function readFile(file,target){
+  const msg=$(target+"Msg");msg.className="file-msg";msg.textContent="Reading "+file.name+"…";
+  const name=file.name.toLowerCase();
+  try{
+    let text="";
+    if(name.endsWith(".pdf"))text=await pdfText(await file.arrayBuffer());
+    else if(name.endsWith(".docx"))text=await docxText(await file.arrayBuffer());
+    else if(name.endsWith(".doc")){throw{user:"Old .doc files can’t be read. Save it as .docx or PDF and upload again."};}
+    else text=(await file.text()).trim();
+    if(!text||text.length<40)throw{user:"Couldn’t find text in "+file.name+". It may be a scanned image. Paste the text instead."};
+    $(target).value=text;leaveExample();persist();
+    msg.className="file-msg ok";msg.textContent="Loaded "+file.name+" ("+text.split(/\s+/).length+" words). Check it looks right.";
+  }catch(e){msg.className="file-msg err";msg.textContent=e&&e.user?e.user:"Couldn’t read "+file.name+". Try a PDF or .docx, or paste the text.";}
+}
+[["jdFile","jd"],["resumeFile","resume"]].forEach(([inp,t])=>$(inp).addEventListener("change",e=>{const f=e.target.files[0];if(f)readFile(f,t);e.target.value="";}));
+document.querySelectorAll("[data-drop]").forEach(b=>{
+  b.addEventListener("dragover",e=>{e.preventDefault();b.classList.add("drag");});
+  b.addEventListener("dragleave",()=>b.classList.remove("drag"));
+  b.addEventListener("drop",e=>{e.preventDefault();b.classList.remove("drag");const f=e.dataTransfer.files[0];if(f)readFile(f,b.dataset.drop);});
+});
+
+/* ---------- Rendering ---------- */
+function copyBtn(label,getText){const b=document.createElement("button");b.className="btn ghost";b.textContent=label;
+  b.onclick=()=>{const t=getText();const ok=()=>{b.textContent="Copied";setTimeout(()=>b.textContent=label,1600);};
+    try{navigator.clipboard.writeText(t).then(ok,()=>{b.textContent="Copy blocked. Select the text instead.";});}catch(e){b.textContent="Copy blocked. Select the text instead.";}};return b;}
+
+function renderFU(r,example){
+  const v=["strong","possible","weak"].includes(r.verdict)?r.verdict:"possible";
+  const vtxt={strong:"Strong fit",possible:"Possible fit",weak:"Weak fit"}[v];
+  const fit=(r.fit||[]).map(f=>{const s=["match","partial","missing"].includes(f.status)?f.status:"partial";
+    return '<div class="fit-row"><span class="chip c-'+s+'">'+s+'</span><span class="req">'+esc(f.requirement)+'</span><span class="ev">'+esc(f.evidence)+'</span></div>';}).join("");
+  const fus=(r.followups||[]).map((f,i)=>'<div class="fu"><div class="fu-top"><span class="num">'+String(i+1).padStart(2,"0")+'</span><span class="claim">'+esc(f.topic)+(f.claim?' · resume says “'+esc(f.claim)+'”':'')+'</span></div><span class="ask">'+esc(f.ask)+'</span><div class="listen"><span class="g">Good</span><span>'+esc(f.good)+'</span><span class="w">Weak</span><span>'+esc(f.weak)+'</span></div></div>').join("");
+  const flags=(r.red_flags||[]).map(f=>'<div class="flag"><b>'+esc(f.flag)+'</b><span>Ask: '+esc(f.ask)+'</span></div>').join("");
+  $("paneFU").innerHTML=
+    '<div class="block"><span class="label">Read'+(example?' <span class="tag">Example output</span>':'')+'</span><div><span class="verdict v-'+v+'">'+vtxt+'</span></div><p class="summary">'+esc(r.summary)+'</p></div>'+
+    '<div class="block"><span class="label">Must-haves check</span><div class="fit">'+(fit||'<span class="empty">No requirements found.</span>')+'</div></div>'+
+    '<div class="block"><span class="label">Follow-up questions</span>'+(fus||'<span class="empty">None generated.</span>')+'</div>'+
+    '<div class="block"><span class="label">Things to verify</span><div class="flags">'+(flags||'<span class="empty">Nothing stood out.</span>')+'</div></div>'+
+    '<div class="btns" id="fuBtns"></div>';
+  $("fuBtns").appendChild(copyBtn("Copy questions",()=>["Follow-ups:",...(r.followups||[]).map((f,i)=>(i+1)+". "+f.ask),"","Verify:",...(r.red_flags||[]).map(f=>"- "+f.ask)].join("\n")));
+}
+
+const FORM_FIELDS=[["name","Candidate Name"],["position","Position/Job Title"],["contact","Email/Phone"],["compensation","Compensation Requirements"],["location","Location"],["linkedin","LinkedIn Profile"],["interview_availability","Interview Availability"],["start_availability","Start Date Availability"],["communication","Communication Skills Assessment"],["employment_status","Current Employment Status"],["motivation","Motivation for Change"]];
+const BANNED=["perfect fit","perfect match","highly qualified","ideal candidate","ideal fit","rockstar","rock star","superstar","exceptional candidate","best candidate","unicorn","guaranteed","no-brainer"];
+const val=v=>(v==null||String(v).trim()===""||/^(n\/?a|unknown|not provided|missing|🔴)$/i.test(String(v).trim()))?null:String(v).trim();
+
+function subParts(s,form){
+  const b=s.brief||{},st=s.standard||{};
+  return {
+    form:["Candidate Information Form",...FORM_FIELDS.map(([k,l])=>l+": "+(val(form[k])??"🔴"))].join("\n"),
+    brief:["📋 BRIEF SUMMARY","",b.opening||"","",...(b.bullets||[]).map(x=>"• "+x)].join("\n"),
+    standard:["📋 STANDARD SUMMARY","",st.paragraph||"","","Top Qualifications",...(st.top_qualifications||[]).map(x=>"• "+x)].join("\n")
+  };
+}
+function renderSub(s,example){
+  const b=s.brief||{},st=s.standard||{};const form=Object.assign({},st.form||{});
+  if(!example){const c=contacts();if(!val(form.contact))form.contact=c.contact;if(!val(form.linkedin))form.linkedin=c.linkedin;}
+  else{form.contact="priya.example@email.com | (555) 010-0199";form.linkedin="linkedin.com/in/priya-example";}
+  const all=[b.opening,...(b.bullets||[]),st.paragraph,...(st.top_qualifications||[])].join(" ").toLowerCase();
+  const hits=BANNED.filter(p=>all.includes(p));
+  const missing=FORM_FIELDS.filter(([k])=>!val(form[k])).map(([,l])=>l);
+  const words=t=>(t||"").trim().split(/\s+/).filter(Boolean).length;
+  const ow=words(b.opening),pw=words(st.paragraph);
+  const hasYears=/\b\d+\+?\s*(years?|yrs?)\b/i.test(all);
+  const qc=[
+    [!hits.length,hits.length?"Overselling language found: "+hits.join(", ")+". Edit before sending.":"No assumptive language like “perfect fit” or “highly qualified”"],
+    [hasYears,hasYears?"Years of experience included":"No years of experience found. Add them if you know them."],
+    [!missing.length,missing.length?"Missing, marked 🔴: "+missing.join(", "):"Every form field is filled"],
+    [ow>=55&&ow<=90,"Brief opening is "+ow+" words (target 60–80)"],
+    [pw>=75&&pw<=130,"Standard paragraph is "+pw+" words (target 80–120)"]
+  ];
+  $("paneSub").innerHTML=
+    '<div class="block"><div class="sub-head"><h2 class="sub-title">Candidate Information Form</h2>'+(example?'<span class="tag">Example output</span>':'')+'</div><dl class="form">'+FORM_FIELDS.map(([k,l])=>'<dt>'+l+'</dt><dd>'+(val(form[k])?esc(form[k]):'<span class="missing">🔴 Missing</span>')+'</dd>').join("")+'</dl><div class="btns" id="cpForm"></div></div>'+
+    '<div class="block"><div class="sub-head"><h2 class="sub-title">📋 Brief Summary</h2></div><p class="prose">'+esc(b.opening)+'</p><ul class="quals">'+(b.bullets||[]).map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul><div class="btns" id="cpBrief"></div></div>'+
+    '<div class="block"><div class="sub-head"><h2 class="sub-title">📋 Standard Summary</h2></div><p class="prose">'+esc(st.paragraph)+'</p>'+
+      '<span class="label">Top Qualifications</span><ul class="quals">'+(st.top_qualifications||[]).map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul><div class="btns" id="cpStd"></div></div>'+
+    '<div class="block"><span class="label">Quality check</span><div class="qc">'+qc.map(([ok,t])=>'<div class="qc-row"><span class="'+(ok?'qc-ok':'qc-bad')+'">'+(ok?'✓':'!')+'</span><span>'+esc(t)+'</span></div>').join("")+'</div></div>'+
+    '<div class="btns" id="cpAll"></div>';
+  const P=subParts(s,form);
+  $("cpForm").appendChild(copyBtn("Copy form",()=>P.form));
+  $("cpBrief").appendChild(copyBtn("Copy form + brief",()=>P.form+"\n\n\n"+P.brief));
+  $("cpStd").appendChild(copyBtn("Copy form + standard",()=>P.form+"\n\n\n"+P.standard));
+  $("cpAll").appendChild(copyBtn("Copy everything",()=>P.form+"\n\n\n"+P.brief+"\n\n\n"+P.standard));
+}
+
+/* ---------- Claude calls ---------- */
+const COPY={invalid_json:"The answer came back in the wrong format. Try again."};
+let ctl=null,timer=null;
+
+/* ---------- AI settings (same saved key as your other GitHub tools) ---------- */
+const store={
+  get(k,d=""){try{const v=localStorage.getItem("rt_"+k);return v===null?d:v;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem("rt_"+k,v);}catch(e){}},
+  del(k){try{localStorage.removeItem("rt_"+k);}catch(e){}}
+};
+const DEFAULT_MODEL={claude:"claude-sonnet-5-5",gemini:"gemini-2.5-pro"};
+const KEY_HINT={claude:"Get one at console.anthropic.com → API keys.",gemini:"Get one at aistudio.google.com → Get API key."};
+const cfg={provider:store.get("provider","claude"),key:{claude:store.get("key_claude"),gemini:store.get("key_gemini")},
+  model:{claude:store.get("model_claude",DEFAULT_MODEL.claude),gemini:store.get("model_gemini",DEFAULT_MODEL.gemini)}};
+let draftProvider=cfg.provider;
+function segSet(el,v){el.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));}
+function fillSettings(){segSet($("provider"),draftProvider);$("apikey").value=cfg.key[draftProvider]||"";
+  $("model").value=cfg.model[draftProvider]||DEFAULT_MODEL[draftProvider];$("keyHint").textContent=KEY_HINT[draftProvider];
+  $("modelList").innerHTML="";$("modelHint").textContent="Click “Load models” to see what your key can use.";}
+function openSettings(){draftProvider=cfg.provider;fillSettings();$("settings").showModal();}
+$("openSettings").onclick=openSettings;
+$("cancelSettings").onclick=()=>$("settings").close();
+$("provider").onclick=e=>{const b=e.target.closest("button");if(!b)return;
+  cfg.key[draftProvider]=$("apikey").value.trim();cfg.model[draftProvider]=$("model").value.trim();draftProvider=b.dataset.v;fillSettings();};
+$("saveSettings").onclick=()=>{cfg.provider=draftProvider;cfg.key[draftProvider]=$("apikey").value.trim();
+  cfg.model[draftProvider]=$("model").value.trim()||DEFAULT_MODEL[draftProvider];
+  store.set("provider",cfg.provider);store.set("model_"+draftProvider,cfg.model[draftProvider]);
+  if($("remember").checked){store.set("key_claude",cfg.key.claude||"");store.set("key_gemini",cfg.key.gemini||"");}
+  else{store.del("key_claude");store.del("key_gemini");}
+  $("settings").close();$("status").className="status";$("status").textContent="Saved. Using "+(cfg.provider==="claude"?"Claude":"Gemini")+".";};
+function claudeHeaders(key){return{"x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"};}
+$("loadModels").onclick=async()=>{const key=$("apikey").value.trim();
+  if(!key){$("modelHint").textContent="Paste your API key first.";return;}
+  $("modelHint").textContent="Loading…";
+  try{let ids=[];
+    if(draftProvider==="claude"){const r=await fetch("https://api.anthropic.com/v1/models?limit=100",{headers:claudeHeaders(key)});const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);ids=j.data.map(m=>m.id);}
+    else{const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",{headers:{"x-goog-api-key":key}});const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);
+      ids=j.models.filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace(/^models\//,""));}
+    $("modelList").innerHTML=ids.map(i=>'<option value="'+esc(i)+'">').join("");
+    $("modelHint").textContent=ids.length?ids.length+" models available. Click the box to pick one.":"No models returned.";
+  }catch(e){$("modelHint").textContent="Could not load models: "+e.message;}};
+
+function friendly(status,msg){
+  if(status===401||status===403)return"The API key was rejected. Check it in AI settings.";
+  if(status===404)return"That model wasn’t found. Open AI settings and click “Load models” to pick one.";
+  if(status===429)return"Rate limit or quota hit. Wait a minute and try again.";
+  return"AI request failed: "+(msg||("HTTP "+status));}
+async function callAI(prompt,signal){
+  const p=cfg.provider,key=cfg.key[p],model=cfg.model[p]||DEFAULT_MODEL[p];
+  if(p==="claude"){
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",signal,headers:claudeHeaders(key),
+      body:JSON.stringify({model,max_tokens:8000,messages:[{role:"user",content:prompt}]})});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw{user:friendly(r.status,j.error?.message)};
+    if(j.stop_reason==="max_tokens")throw{user:"The answer was cut off. Try again, or trim the resume."};
+    return(j.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("");
+  }
+  const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",{method:"POST",signal,
+    headers:{"x-goog-api-key":key,"content-type":"application/json"},
+    body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:16000,responseMimeType:"application/json"}})});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw{user:friendly(r.status,j.error?.message)};
+  const cand=(j.candidates||[])[0];if(!cand)throw{user:"No answer came back"+(j.promptFeedback?.blockReason?" (blocked: "+j.promptFeedback.blockReason+")":"")+"."};
+  if(cand.finishReason==="MAX_TOKENS")throw{user:"The answer was cut off. Try again, or trim the resume."};
+  return(cand.content?.parts||[]).map(x=>x.text||"").join("");
+}
+function parseJSON(text){let t=String(text).trim().replace(/^```(?:json)?\s*/i,"").replace(/```\s*$/,"");
+  const a=t.indexOf("{"),b=t.lastIndexOf("}");if(a<0||b<a)throw{code:"invalid_json"};
+  try{return JSON.parse(t.slice(a,b+1));}catch(e){throw{code:"invalid_json"};}}
+
+function inputsBlock(){
+  const p=$("prescreen").value.trim(),n=$("notes").value.trim();
+  return "JOB DESCRIPTION:\n"+scrub($("jd").value.trim()).slice(0,10000)+
+    "\n\nCANDIDATE RESUME:\n"+scrub($("resume").value.trim()).slice(0,18000)+
+    "\n\nCANDIDATE PRESCREEN FORM:\n"+(p?scrub(p).slice(0,6000):"(none provided)")+
+    "\n\nRECRUITER NOTES:\n"+(n?scrub(n).slice(0,4000):"(none provided)");
+}
+function fuPrompt(){return `You are helping a technical IT staffing recruiter (not an engineer) screen a candidate on a phone call. Compare the resume to the role and write follow-up questions the recruiter can ask without technical knowledge.
+
+Rules:
+- Base every follow-up on a SPECIFIC claim in this resume (a number, project, tool or title). Questions should reveal whether the candidate really did the work and how deeply.
+- Write questions in plain spoken English. "good" and "weak" describe what a strong vs. weak answer sounds like, in terms a non-engineer can recognize.
+- "fit": list the role's must-have requirements (up to 8) with status match / partial / missing and short evidence from the resume.
+- "red_flags": only real concerns visible in the resume (timeline overlaps, senior work during full-time school, tool lists with no detail, inflated scope, gaps vs. must-haves). Each with a neutral question to verify. Empty array if none.
+- Judge only skills, experience and consistency. Never comment on or ask about nationality, age, ethnicity, religion, family, health, or other personal characteristics.
+- 5 to 7 follow-ups, most important first.
+
+Reply with only JSON in this shape:
+{"verdict":"strong|possible|weak","summary":"2 sentences","fit":[{"requirement":"","status":"match|partial|missing","evidence":""}],"followups":[{"topic":"","claim":"short quote or paraphrase from resume","ask":"","good":"","weak":""}],"red_flags":[{"flag":"","ask":""}]}
+
+${inputsBlock()}`;}
+function subPrompt(){return `VOICE (role): You are an expert recruiting analyst specializing in candidate-to-job matching. Objectively analyze the candidate's qualifications against the job requirements and present findings in a professional, factual manner that lets hiring managers make informed decisions.
+
+OBJECTIVE: Create a candidate summary that compares job requirements to relevant candidate experience, highlights matching qualifications with quantifiable experience (years when possible), completes a candidate information form using available data, and keeps a lightly upbeat, professional tone without assumptive statements.
+
+INSTRUCTIONS — deliver two versions:
+1. Brief Summary (client-friendly quick view)
+   - "opening": 60–80 words. Candidate's total years of relevant experience, current role, and the 2–3 most critical matching qualifications with years.
+   - "bullets": top 3–5 bullets with the most essential qualifications.
+2. Standard Summary (full view)
+   - "paragraph": one executive-style paragraph, 80–120 words: years in industry/role, current position, key qualifications aligned to the role.
+   - "form": the Candidate Information Form. Use ONLY details in the inputs. Use null for anything not stated. Never guess. Fields:
+     name, position (the job title they are being submitted for), compensation, location, interview_availability, start_availability, communication (the recruiter's assessment from the prescreen or notes only), employment_status, motivation.
+     Email, phone and LinkedIn are handled separately; do not include them.
+   - "top_qualifications": up to 7 bullets, each tied directly to a job requirement, quantified where possible (years, technologies, achievements).
+
+EVALUATION — before answering, confirm:
+- No assumptive or overselling language (e.g. "perfect fit", "highly qualified", "ideal", "rockstar").
+- Years of experience included wherever the resume supports them. Calculate years from dates; say "about" or "~" when approximate. Never invent numbers or achievements that are not in the inputs.
+- Missing form fields are null, not guessed.
+- Every match is clearly tied to a job requirement.
+- Professional but approachable tone, not overselling. Clean and easy to scan.
+- Refer to the candidate by first name. Do not mention nationality, age, visa or immigration status, ethnicity, religion, family, or health.
+
+Reply with only JSON in this shape:
+{"brief":{"opening":"","bullets":[""]},"standard":{"paragraph":"","form":{"name":null,"position":null,"compensation":null,"location":null,"interview_availability":null,"start_availability":null,"communication":null,"employment_status":null,"motivation":null},"top_qualifications":[""]}}
+
+${inputsBlock()}`;}
+
+async function run(kind){
+  if(!$("jd").value.trim()||!$("resume").value.trim()){$("status").className="status err";$("status").textContent="Add both the job description and the resume first.";return;}
+  if(!cfg.key[cfg.provider]){openSettings();$("status").className="status err";$("status").textContent="Add your API key to get started.";return;}
+  const isSub=kind==="sub";setTab(isSub);
+  ctl=new AbortController();const t0=Date.now();
+  $("goFU").disabled=true;$("goSub").disabled=true;$("stop").hidden=false;$("status").className="status";
+  const label=isSub?"Writing the submittal… ":"Reading the resume… ";
+  const tick=()=>{$("status").textContent=label+Math.round((Date.now()-t0)/1000)+"s";};tick();timer=setInterval(tick,1000);
+  try{
+    const r=parseJSON(await callAI(isSub?subPrompt():fuPrompt(),ctl.signal));
+    if(!r||typeof r!=="object")throw{code:"invalid_json"};
+    if(isSub){if(!r.brief||!r.standard)throw{code:"invalid_json"};renderSub(r,false);}else renderFU(r,false);
+    $("status").textContent="Done in "+Math.round((Date.now()-t0)/1000)+"s."+(isSub?" Review it before sending.":"");
+  }catch(e){
+    $("status").className="status err";
+    $("status").textContent=e&&e.name==="AbortError"?"Stopped.":e&&e.user?e.user:(COPY[e&&e.code]||"Couldn’t reach the AI. Check your connection and try again.");
+  }finally{clearInterval(timer);$("goFU").disabled=false;$("goSub").disabled=false;$("stop").hidden=true;}
+}
+$("goFU").onclick=()=>run("fu");
+$("goSub").onclick=()=>run("sub");
+$("stop").onclick=()=>ctl?.abort();
+$("clear").onclick=()=>{INPUTS.forEach(k=>$(k).value="");isExample=false;setExampleTags();persist();
+  $("paneFU").innerHTML='<span class="empty">Tap “Get follow-ups” to generate questions for this candidate.</span>';
+  $("paneSub").innerHTML='<span class="empty">Tap “Write submittal” to build the Brief and Standard summaries.</span>';
+  ["jdMsg","resumeMsg"].forEach(m=>{$(m).className="file-msg";$(m).textContent="PDF, Word (.docx) or text. You can also drop a file here.";});
+  $("status").textContent="";$("status").className="status";$("jd").focus();};
+function setTab(sub){$("tabFU").setAttribute("aria-selected",!sub);$("tabSub").setAttribute("aria-selected",sub);$("paneFU").hidden=sub;$("paneSub").hidden=!sub;}
+$("tabFU").onclick=()=>setTab(false);$("tabSub").onclick=()=>setTab(true);
+if(isExample){$("jd").value=EX_JD;$("resume").value=EX_RESUME;$("prescreen").value=EX_PRESCREEN;renderFU(EXAMPLE_FU,true);renderSub(EXAMPLE_SUB,true);}
+else{$("paneFU").innerHTML='<span class="empty">Tap “Get follow-ups” to generate questions for this candidate.</span>';$("paneSub").innerHTML='<span class="empty">Tap “Write submittal” to build the Brief and Standard summaries.</span>';}
+setExampleTags();
+</script>
+</body>
+</html>
